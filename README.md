@@ -2,7 +2,7 @@
 
 > a wallpaper picker nobody asked for, but it's smooth
 
-a keyboard-first wallpaper carousel for [quickshell](https://quickshell.org/) on wayland. scroll through your wallpapers, type to filter, hit enter, done.
+a keyboard-first wallpaper carousel for [quickshell](https://quickshell.org/) on X11 and Wayland. scroll through your wallpapers, type to filter, hit enter, done.
 
 the m3e is for material 3 expressive: with matugen it re-colors itself from your wallpaper.
 
@@ -23,7 +23,8 @@ that project's carousel look comes from [ilyamiro's nixos config](https://github
 - a smooth carousel for your wallpapers, local images only
 - type to filter by filename
 - thumbnails are cached, so it opens fast
-- works with `awww`, `swww`, `hyprpaper`, `swaybg`, or your own command
+- works on both X11 and Wayland
+- works with `feh`, `nitrogen`, `xwallpaper`, `hsetroot`, `awww`, `swww`, `hyprpaper`, `swaybg`, or your own command
 - matugen or pywal theming, and the picker can match your wallpaper too
 - `--restore` for login and `--random` for when you can't decide
 - `--doctor` tells you what's missing
@@ -64,14 +65,18 @@ you can also just run `./bin/qs-bgselector` straight from the clone without inst
 
 **required**
 
-- a wayland compositor
+- an X11 window manager (i3, bspwm, openbox, awesome, etc.) or a Wayland compositor
 - [quickshell](https://quickshell.org/) (needs the `Quickshell.Widgets` module)
 - imagemagick (`magick`, or `convert` on imagemagick 6)
 - bash 4.4+ and the usual stuff (`find`, `xargs`, `md5sum`, `sort`, `comm`)
-- one wallpaper backend: `awww`, `swww`, `hyprpaper`, `swaybg`, or your own command
+- one wallpaper backend:
+  - **X11:** `feh`, `nitrogen`, `xwallpaper`, `hsetroot`
+  - **Wayland:** `awww`, `swww`, `hyprpaper`, `swaybg`
+  - or your own command (`BGSEL_SET_CMD`)
 
 **optional**
 
+- `picom` or `compton` (for translucent background on X11; without a compositor, the overlay is solid black)
 - `matugen` or `pywal` for dynamic colors
 - `flock` (stops you opening two pickers), `notify-send` (error popups), `shuf` (for `--random`)
 - jetbrains mono, or set `BGSEL_FONT` to whatever font you like
@@ -80,18 +85,26 @@ you can also just run `./bin/qs-bgselector` straight from the clone without inst
 
 ## keybind
 
+i3 / sway:
+
+```
+# ~/.config/i3/config
+bindsym $mod+w exec --no-startup-id qs-bgselector
+exec_always --no-startup-id qs-bgselector --restore
+```
+
+bspwm (`~/.config/sxhkd/sxhkdrc`):
+
+```
+super + w
+    qs-bgselector
+```
+
 hyprland:
 
 ```ini
 bind = SUPER, W, exec, qs-bgselector
 exec-once = qs-bgselector --restore
-```
-
-sway:
-
-```
-bindsym $mod+w exec qs-bgselector
-exec qs-bgselector --restore
 ```
 
 niri:
@@ -147,9 +160,9 @@ lives at `~/.config/qs-bgselector/config`. it's just a shell file, everything's 
 | --- | --- | --- |
 | `BGSEL_WALL_DIR` | first folder that exists out of `~/Pictures/Wallpapers`, `~/Pictures/wallpapers`, `~/Wallpapers`, `~/wallpapers`, `~/Pictures` | your wallpapers (subfolders count) |
 | `BGSEL_MAX_DEPTH` | unlimited | how deep into subfolders to look |
-| `BGSEL_BACKEND` | `auto` | `auto`, `awww`, `swww`, `hyprpaper`, `swaybg`, `custom` |
+| `BGSEL_BACKEND` | `auto` | `auto`, `feh`, `nitrogen`, `xwallpaper`, `hsetroot`, `awww`, `swww`, `hyprpaper`, `swaybg`, `custom` |
 | `BGSEL_SET_CMD` | empty | your own command to set the wallpaper, the image is in `$BGSEL_WALLPAPER` |
-| `BGSEL_TRANSITION` | `fade` | awww/swww transition type, or `none` |
+| `BGSEL_TRANSITION` | `fade` | awww/swww transition type (Wayland only), or `none` |
 | `BGSEL_TRANSITION_DURATION` / `_FPS` / `_BEZIER` | `1.5` / `60` / `.4,0,.2,1` | awww/swww transition settings |
 | `BGSEL_THEME` | `auto` | `auto` (matugen if you have it), `matugen`, `wal`, `none` |
 | `BGSEL_MATUGEN_ARGS` | `--source-color-index 0 -t scheme-smart` | extra matugen args |
@@ -158,6 +171,7 @@ lives at `~/.config/qs-bgselector/config`. it's just a shell file, everything's 
 | `BGSEL_CURRENT_LINK` | `~/.cache/current-wallpaper` | symlink to your current wallpaper |
 | `BGSEL_ACCENT`, `BGSEL_TICK`, `BGSEL_TEXT`, `BGSEL_TEXT_MUTED` | teal-ish | picker colors |
 | `BGSEL_FONT` | `JetBrains Mono` | picker font |
+| `BGSEL_BACKDROP` | `auto` | backdrop behind carousel: `auto` (current wallpaper on X11), `current`, `none`, or `/path/to/image.jpg` |
 | `BGSEL_CACHE_DIR` | `~/.cache/qs-bgselector` | where thumbnails go |
 
 some examples:

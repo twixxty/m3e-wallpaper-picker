@@ -22,6 +22,7 @@ while [ $# -gt 0 ]; do
 done
 
 rm -fv "$prefix/bin/$prog"
+rm -f "$prefix/bin/${prog}-x11"
 rm -rfv "$prefix/share/$prog"
 
 if [ $purge -eq 1 ]; then

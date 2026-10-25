@@ -14,16 +14,18 @@
 #BGSEL_MAX_DEPTH=""
 
 # ---- applying a wallpaper --------------------------------------------------
-# auto | awww | swww | hyprpaper | swaybg | custom
-# auto prefers a wallpaper daemon that is already running, then the first
-# installed one in the order above.
+# auto | feh | nitrogen | xwallpaper | hsetroot | awww | swww | hyprpaper | swaybg | custom
+# On X11, auto picks feh, nitrogen, xwallpaper, or hsetroot.
+# On Wayland, auto prefers a running daemon (awww/swww/hyprpaper), then swaybg.
 #BGSEL_BACKEND="auto"
 
 # Run your own command instead of a built-in backend. The picked image is in
 # $BGSEL_WALLPAPER. Setting this makes the backend "custom" when it is "auto".
 #BGSEL_SET_CMD='feh --bg-fill "$BGSEL_WALLPAPER"'
 
-# awww / swww transition (any value `awww img -t` accepts, or "none")
+# awww / swww transition for Wayland (any value `awww img -t` accepts, or "none").
+# Note: Native X11 backends (feh, nitrogen, etc.) set the root pixmap directly
+# and do not use animated transitions.
 #BGSEL_TRANSITION="fade"
 #BGSEL_TRANSITION_DURATION="1.5"
 #BGSEL_TRANSITION_FPS="60"
@@ -50,6 +52,15 @@
 #BGSEL_TEXT="#dee4e1"
 #BGSEL_TEXT_MUTED="#bec9c5"
 #BGSEL_FONT="JetBrains Mono"
+
+# ---- backdrop image (behind the carousel) ----------------------------------
+# auto | current | none | /path/to/image.jpg
+# auto: On X11, shows your current wallpaper in the background with a dark tint;
+#       on Wayland, uses the desktop background scrim.
+# current: Always displays the current wallpaper in the background.
+# none: Pure translucent/solid dark scrim without a wallpaper image.
+# /path/to/image.jpg: Use any specific custom image as the backdrop.
+#BGSEL_BACKDROP="auto"
 
 # ---- cache -----------------------------------------------------------------
 #BGSEL_CACHE_DIR="$HOME/.cache/qs-bgselector"

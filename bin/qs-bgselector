@@ -52,6 +52,7 @@ for cand in "${BGSEL_SHARE_DIR:-}" "$root" "$root/share/$PROG"; do
     if [ -n "$cand" ] && [ -f "$cand/qml/shell.qml" ]; then share="$cand"; break; fi
 done
 [ -n "$share" ] || { log "error: cannot find qml/shell.qml (looked in $root and $root/share/$PROG)"; exit 1; }
+[ -f "$share/qml/Picker.qml" ] || { log "error: qml/Picker.qml is missing next to qml/shell.qml (in $share/qml). Both files must live in the same folder."; exit 1; }
 
 # ---- command line ----------------------------------------------------------
 mode=ui
@@ -80,7 +81,8 @@ config_vars=(
     BGSEL_BACKEND BGSEL_SET_CMD
     BGSEL_TRANSITION BGSEL_TRANSITION_DURATION BGSEL_TRANSITION_FPS BGSEL_TRANSITION_BEZIER
     BGSEL_THEME BGSEL_MATUGEN_ARGS BGSEL_THEME_DELAY BGSEL_POST_CMD
-    BGSEL_ACCENT BGSEL_TICK BGSEL_TEXT BGSEL_TEXT_MUTED BGSEL_FONT
+    BGSEL_ACCENT BGSEL_TICK BGSEL_TEXT BGSEL_TEXT_MUTED BGSEL_FONT BGSEL_LOADER
+    BGSEL_BACKDROP
 )
 
 CONFIG_FILE="${cli_config:-${BGSEL_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/$PROG/config}}"
@@ -124,6 +126,8 @@ cache_home="${XDG_CACHE_HOME:-$HOME/.cache}"
 : "${BGSEL_TEXT:=#dee4e1}"
 : "${BGSEL_TEXT_MUTED:=#bec9c5}"
 : "${BGSEL_FONT:=JetBrains Mono}"
+: "${BGSEL_LOADER:=1}"
+: "${BGSEL_BACKDROP:=auto}"
 
 # Wallpaper directory: first existing common location unless configured.
 if [ -z "${BGSEL_WALL_DIR:-}" ]; then
@@ -305,6 +309,41 @@ require_wall_dir() {
     [ -d "$BGSEL_WALL_DIR" ] || die "wallpaper directory not found: $BGSEL_WALL_DIR (set BGSEL_WALL_DIR in $CONFIG_FILE or use --dir)"
 }
 
+resolve_backdrop() {
+    local b="${BGSEL_BACKDROP:-auto}"
+    local img=""
+    case "$b" in
+        auto)
+            if [ "${BGSEL_PLATFORM:-}" = "x11" ]; then
+                img="$BGSEL_CURRENT"
+            fi
+            ;;
+        current)
+            img="$BGSEL_CURRENT"
+            ;;
+        none|off|0|"")
+            img=""
+            ;;
+        /*)
+            [ -f "$b" ] && img="$b"
+            ;;
+        ~*)
+            local exp="${b/#\~/$HOME}"
+            [ -f "$exp" ] && img="$exp"
+            ;;
+        *)
+            if [ -f "$BGSEL_WALL_DIR/$b" ]; then
+                img="$BGSEL_WALL_DIR/$b"
+            elif [ -f "$b" ]; then
+                img="$b"
+            fi
+            ;;
+    esac
+    if [ -n "$img" ] && [ -f "$img" ]; then
+        printf '%s' "$img"
+    fi
+}
+
 run_ui() {
     find_quickshell || die "Quickshell not found (need 'quickshell' or 'qs' in PATH). Run: $PROG --doctor"
     export QS_NO_RELOAD_POPUP=1
@@ -315,6 +354,14 @@ run_ui() {
     # list even when the wallpaper folder is itself a symlink.
     BGSEL_CURRENT="$(readlink "$BGSEL_CURRENT_LINK" 2>/dev/null)"
     export BGSEL_CURRENT
+    if [ -z "${WAYLAND_DISPLAY:-}" ] && [ -n "${DISPLAY:-}" ]; then
+        export BGSEL_PLATFORM="x11"
+        export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-xcb}"
+    else
+        export BGSEL_PLATFORM="wayland"
+    fi
+    BGSEL_BACKDROP_IMAGE="$(resolve_backdrop)"
+    export BGSEL_BACKDROP_IMAGE
     "$QS_BIN" -p "$share/qml" 9>&-
     local rc=$?
     [ $rc -eq 0 ] || notify -u critical "$PROG" "Quickshell exited with an error (code $rc). Run '$PROG' in a terminal to see why."
@@ -358,20 +405,37 @@ doctor() {
     if [ "${BASH_VERSINFO[0]}" -gt 4 ] || { [ "${BASH_VERSINFO[0]}" -eq 4 ] && [ "${BASH_VERSINFO[1]}" -ge 4 ]; }; then
         ok "bash $BASH_VERSION"
     else miss "bash 4.4+ required (found $BASH_VERSION)"; bad=1; fi
-    if [ -n "${WAYLAND_DISPLAY:-}" ]; then ok "Wayland session ($WAYLAND_DISPLAY)"
-    else miss "WAYLAND_DISPLAY is not set — Quickshell needs a Wayland session"; fi
+    if [ -n "${WAYLAND_DISPLAY:-}" ]; then
+        ok "display session: Wayland ($WAYLAND_DISPLAY)"
+    elif [ -n "${DISPLAY:-}" ]; then
+        ok "display session: X11 ($DISPLAY)"
+    else
+        miss "no display session found (WAYLAND_DISPLAY or DISPLAY must be set)"; bad=1
+    fi
 
     echo
     echo "Wallpaper backend (need at least one, or set BGSEL_SET_CMD)"
     local found=0
+    for t in feh nitrogen xwallpaper hsetroot; do
+        if have "$t"; then ok "$t (X11)"; found=1; else opt "$t (not installed)"; fi
+    done
     for t in awww swww hyprpaper swaybg; do
-        if have "$t"; then ok "$t"; found=1; else opt "$t (not installed)"; fi
+        if have "$t"; then ok "$t (Wayland)"; found=1; else opt "$t (not installed)"; fi
     done
     if [ -n "$BGSEL_SET_CMD" ]; then ok "custom BGSEL_SET_CMD set"; found=1; fi
-    if [ $found -eq 0 ]; then miss "no wallpaper backend found"; bad=1; fi
+    if [ $found -eq 0 ]; then miss "no wallpaper backend found (install feh, nitrogen, etc.)"; bad=1; fi
 
     echo
     echo "Optional"
+    if [ -z "${WAYLAND_DISPLAY:-}" ] && [ -n "${DISPLAY:-}" ]; then
+        if pgrep -x picom >/dev/null 2>&1 || pgrep -x compton >/dev/null 2>&1; then
+            ok "picom/compton (compositor running for background transparency)"
+        elif have picom || have compton; then
+            opt "picom/compton (installed but not running; needed for translucent backdrop)"
+        else
+            opt "picom/compton (not installed; backdrop will be opaque on X11 without a compositor)"
+        fi
+    fi
     if have matugen; then ok "matugen (dynamic colors)"; else opt "matugen (dynamic colors) — not installed"; fi
     if have wal; then ok "pywal"; else opt "pywal — not installed"; fi
     if have flock; then ok "flock (single-instance lock)"; else opt "flock — not installed, duplicate pickers are not prevented"; fi
@@ -382,6 +446,19 @@ doctor() {
     echo "Configuration"
     if [ -f "$CONFIG_FILE" ]; then ok "config: $CONFIG_FILE"; else opt "config: $CONFIG_FILE (not created, using defaults)"; fi
     if [ -f "$COLORS_FILE" ]; then ok "matugen colors: $COLORS_FILE"; else opt "matugen colors: none (using built-in palette, see README)"; fi
+    if [ -z "${WAYLAND_DISPLAY:-}" ] && [ -n "${DISPLAY:-}" ]; then
+        BGSEL_PLATFORM="x11"
+    else
+        BGSEL_PLATFORM="wayland"
+    fi
+    BGSEL_CURRENT="$(readlink "$BGSEL_CURRENT_LINK" 2>/dev/null)"
+    local bd
+    bd="$(resolve_backdrop)"
+    if [ -n "$bd" ]; then
+        ok "backdrop image: $bd (${BGSEL_BACKDROP:-auto})"
+    else
+        opt "backdrop image: none (${BGSEL_BACKDROP:-auto})"
+    fi
     ok "files: $share"
     if [ -d "$BGSEL_WALL_DIR" ]; then
         local n

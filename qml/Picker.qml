@@ -3,10 +3,12 @@ import Quickshell.Widgets
 
 FocusScope {
     id: root
+    focus: true
 
     // ---- inputs ----------------------------------------------------------
     property var entries: []
     property string startPath: ""
+    property string backdropPath: ""
     property color accent: "#84d6c3"
     property color tickColor: "#00382f"
     property color textColor: "#dee4e1"
@@ -133,7 +135,10 @@ FocusScope {
         picked(shown[current].path)
     }
 
-    Component.onCompleted: refilter(startPath)
+    Component.onCompleted: {
+        forceActiveFocus()
+        refilter(startPath)
+    }
 
     Keys.onPressed: (e) => {
         if (root.busy) { e.accepted = true; return }
@@ -171,9 +176,26 @@ FocusScope {
     }
 
     // ---- visuals ---------------------------------------------------------
+    Image {
+        id: backdropImg
+        anchors.fill: parent
+        source: root.backdropPath !== "" ? "file://" + root.backdropPath : ""
+        fillMode: Image.PreserveAspectCrop
+        visible: status === Image.Ready
+        asynchronous: true
+        cache: true
+
+        opacity: status === Image.Ready ? 1 : 0
+        Behavior on opacity {
+            NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
+        }
+    }
+
     Rectangle {
         anchors.fill: parent
-        color: root.busy && root.showLoader ? "#40000000" : "#80000000"
+        color: root.backdropPath !== ""
+            ? (root.busy && root.showLoader ? "#60000000" : "#99000000")
+            : (root.busy && root.showLoader ? "#40000000" : "#80000000")
         Behavior on color { ColorAnimation { duration: 250; easing.type: Easing.OutCubic } }
 
         NumberAnimation on opacity { from: 0; to: 1; duration: 160; easing.type: Easing.OutCubic }

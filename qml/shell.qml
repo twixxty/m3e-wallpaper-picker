@@ -1,7 +1,6 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import Quickshell.Wayland
 
 // Entry point. Everything configurable arrives through BGSEL_* environment
 // variables set by the qs-bgselector launcher.
@@ -19,6 +18,10 @@ ShellRoot {
     readonly property string currentPath: env("BGSEL_CURRENT", "")
     readonly property string wallDir: env("BGSEL_DIR", "")
     readonly property bool showLoader: env("BGSEL_LOADER", "1") !== "0"
+    readonly property string backdropPath: env("BGSEL_BACKDROP_IMAGE", "")
+
+    readonly property bool isX11: env("BGSEL_PLATFORM", "") === "x11" ||
+        (Quickshell.env("WAYLAND_DISPLAY") === null || Quickshell.env("WAYLAND_DISPLAY") === undefined || Quickshell.env("WAYLAND_DISPLAY") === "")
 
     FileView {
         id: listFile
@@ -41,25 +44,21 @@ ShellRoot {
     Process {
         id: applyProc
         onExited: (exitCode) => {
-            picker.finishAndQuit()
+            if (winLoader.item && winLoader.item.picker) {
+                winLoader.item.picker.finishAndQuit()
+            }
         }
     }
 
-    PanelWindow {
-        color: "transparent"
-        anchors { top: true; bottom: true; left: true; right: true }
-        exclusionMode: ExclusionMode.Ignore
-
-        WlrLayershell.namespace: "bgselector"
-        WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
-
+    Component {
+        id: pickerComp
         Picker {
             id: picker
             anchors.fill: parent
             focus: true
             entries: shell.parseList()
             startPath: shell.currentPath
+            backdropPath: shell.backdropPath
 
             accent: shell.env("BGSEL_ACCENT", "#84d6c3")
             tickColor: shell.env("BGSEL_TICK", "#00382f")
@@ -81,6 +80,54 @@ ShellRoot {
                 }
             }
             onDismissed: Qt.quit()
+        }
+    }
+
+    Loader {
+        id: winLoader
+        active: true
+        sourceComponent: shell.isX11 ? x11Window : waylandWindow
+    }
+
+    // On X11 (i3, bspwm, etc.), standard FloatingWindow with fullscreen gets proper
+    // OS keyboard focus, whereas PanelWindow (type DOCK) is never focused by i3.
+    Component {
+        id: x11Window
+        FloatingWindow {
+            id: x11Win
+            title: "qs-bgselector"
+            color: "transparent"
+            fullscreen: true
+            visible: true
+
+            property alias picker: pLoader.item
+
+            Loader {
+                id: pLoader
+                anchors.fill: parent
+                sourceComponent: pickerComp
+            }
+        }
+    }
+
+    // On Wayland, PanelWindow integrates with the compositor's layer-shell overlay.
+    Component {
+        id: waylandWindow
+        PanelWindow {
+            id: wlWin
+            color: "transparent"
+            anchors { top: true; bottom: true; left: true; right: true }
+            exclusionMode: ExclusionMode.Ignore
+            aboveWindows: true
+            focusable: true
+
+            property alias picker: pLoader.item
+
+            Loader {
+                id: pLoader
+                anchors.fill: parent
+                sourceComponent: pickerComp
+            }
         }
     }
 }

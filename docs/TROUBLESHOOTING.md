@@ -6,9 +6,17 @@ backend would be used, where the config and cache live, and how many images were
 ## Nothing happens when I press the keybind
 Run `qs-bgselector` from a terminal; errors are printed there (and shown as a
 notification if `notify-send` exists). Common causes:
-- `quickshell` is not in the `PATH` that Hyprland uses. Use the full path in the keybind.
+- `quickshell` is not in the `PATH` that your window manager or compositor uses. Use the full path in the keybind.
 - Another picker is already open (only one instance is allowed).
-- You are not in a Wayland session.
+- Neither `DISPLAY` (X11) nor `WAYLAND_DISPLAY` (Wayland) is set.
+
+## The background behind the carousel is black instead of translucent
+On X11, translucent window overlays require an X11 compositor (such as `picom` or `compton`).
+Run a compositor in your autostart:
+```bash
+picom -b
+```
+Without a compositor running, X11 cannot perform alpha blending on the root window, so the backdrop appears solid black.
 
 ## "Type Picker unavailable" / QML errors
 Your Quickshell is too old or too new for this QML. The picker uses
@@ -26,8 +34,9 @@ ships that module. Update Quickshell and open an issue with the output of
 `qs-bgselector --rebuild --prepare` throws the cache away and rebuilds it.
 
 ## Wallpaper does not change
-- `BGSEL_BACKEND=auto` picks a running `awww`/`swww` daemon first, then the first
-  installed backend. Force one with `BGSEL_BACKEND=swaybg`, for example.
+- On X11, ensure you have an X11 setter installed: `feh`, `nitrogen`, `xwallpaper`, or `hsetroot`.
+- On Wayland, ensure you have `awww`, `swww`, `hyprpaper`, or `swaybg`.
+- `BGSEL_BACKEND=auto` picks a running daemon first, then the first installed tool. Force one with `BGSEL_BACKEND=feh` or `BGSEL_BACKEND=swaybg`, for example.
 - For anything else use `BGSEL_SET_CMD`. The image path is in `$BGSEL_WALLPAPER`.
 
 ## Colors did not update

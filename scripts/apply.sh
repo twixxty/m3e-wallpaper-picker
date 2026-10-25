@@ -27,13 +27,26 @@ TRANSITION="${BGSEL_TRANSITION:-fade}"
 # ---- backend selection -----------------------------------------------------
 detect_backend() {
     local b
-    # 1) a wallpaper daemon that is already running wins
-    for b in awww swww; do
-        have "$b" && pgrep -x "$b-daemon" >/dev/null 2>&1 && { echo "$b"; return; }
-    done
-    have hyprpaper && pgrep -x hyprpaper >/dev/null 2>&1 && { echo hyprpaper; return; }
-    # 2) otherwise the first installed one
-    for b in awww swww hyprpaper swaybg; do
+    # 1) If in Wayland, check running Wayland wallpaper daemons first
+    if [ -n "${WAYLAND_DISPLAY:-}" ]; then
+        for b in awww swww; do
+            have "$b" && pgrep -x "$b-daemon" >/dev/null 2>&1 && { echo "$b"; return; }
+        done
+        have hyprpaper && pgrep -x hyprpaper >/dev/null 2>&1 && { echo hyprpaper; return; }
+        for b in awww swww hyprpaper swaybg; do
+            have "$b" && { echo "$b"; return; }
+        done
+    fi
+
+    # 2) If in X11 (or fallback), check X11 wallpaper setters
+    if [ -n "${DISPLAY:-}" ]; then
+        for b in feh nitrogen xwallpaper hsetroot; do
+            have "$b" && { echo "$b"; return; }
+        done
+    fi
+
+    # 3) Otherwise check any installed tool in order of preference
+    for b in feh nitrogen xwallpaper hsetroot awww swww hyprpaper swaybg; do
         have "$b" && { echo "$b"; return; }
     done
     echo none
@@ -71,12 +84,40 @@ set_swaybg() {
     [ -n "$old" ] && kill $old 2>/dev/null
 }
 
+set_feh() {
+    feh --bg-fill "$path"
+}
+
+set_nitrogen() {
+    nitrogen --set-zoom-fill --save "$path"
+}
+
+set_xwallpaper() {
+    xwallpaper --zoom "$path"
+}
+
+set_hsetroot() {
+    hsetroot -fill "$path"
+}
+
 # A custom command always beats auto-detection.
 if [ "$BACKEND" = auto ]; then
     if [ -n "${BGSEL_SET_CMD:-}" ]; then BACKEND=custom; else BACKEND="$(detect_backend)"; fi
 fi
 
 case "$BACKEND" in
+    feh)
+        have feh || { log "backend 'feh' is not installed"; exit 1; }
+        set_feh ;;
+    nitrogen)
+        have nitrogen || { log "backend 'nitrogen' is not installed"; exit 1; }
+        set_nitrogen ;;
+    xwallpaper)
+        have xwallpaper || { log "backend 'xwallpaper' is not installed"; exit 1; }
+        set_xwallpaper ;;
+    hsetroot)
+        have hsetroot || { log "backend 'hsetroot' is not installed"; exit 1; }
+        set_hsetroot ;;
     awww|swww)
         have "$BACKEND" || { log "backend '$BACKEND' is not installed"; exit 1; }
         set_daemon_backend "$BACKEND" ;;
@@ -90,7 +131,7 @@ case "$BACKEND" in
         [ -n "${BGSEL_SET_CMD:-}" ] || { log "BGSEL_BACKEND=custom needs BGSEL_SET_CMD"; exit 1; }
         BGSEL_WALLPAPER="$path" bash -c "$BGSEL_SET_CMD" ;;
     none)
-        log "no wallpaper backend found (install awww, swww, hyprpaper or swaybg, or set BGSEL_SET_CMD)"
+        log "no wallpaper backend found (install feh, nitrogen, xwallpaper, hsetroot, awww, swww, hyprpaper or swaybg, or set BGSEL_SET_CMD)"
         exit 1 ;;
     *)
         log "unknown BGSEL_BACKEND '$BACKEND'"

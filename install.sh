@@ -12,7 +12,6 @@
 set -eu
 
 prog=qs-bgselector
-prog_x11=qs-bgselector-x11
 repo="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 prefix="${PREFIX:-$HOME/.local}"
 dev=0
@@ -37,18 +36,14 @@ mkdir -p "$bin"
 
 if [ $dev -eq 1 ]; then
     ln -sfn "$repo/bin/$prog" "$bin/$prog"
-    ln -sfn "$repo/bin/$prog_x11" "$bin/$prog_x11"
     echo "Linked $bin/$prog -> $repo/bin/$prog"
-    echo "Linked $bin/$prog_x11 -> $repo/bin/$prog_x11"
 else
     rm -rf "$share"
     mkdir -p "$share"
     cp -r "$repo/qml" "$repo/scripts" "$repo/config" "$share/"
     chmod +x "$share/scripts/apply.sh"
     install -m 755 "$repo/bin/$prog" "$bin/$prog"
-    install -m 755 "$repo/bin/$prog_x11" "$bin/$prog_x11"
     echo "Installed $bin/$prog"
-    echo "Installed $bin/$prog_x11"
     echo "Installed files in $share"
 fi
 
@@ -93,8 +88,10 @@ if [ -z "${DESTDIR:-}" ]; then
     echo "Installed. Next steps:"
     echo "  1. Put wallpapers in ~/Pictures/Wallpapers (or set BGSEL_WALL_DIR in the config)"
     if [ $in_path -eq 1 ]; then echo "  2. Try it:           $prog"; else echo "  2. Try it:           $bin/$prog   (or fix PATH, see above)"; fi
-    echo "  3. Bind a key, e.g. Hyprland:"
-    echo "       bind = SUPER, W, exec, $bin/$prog"
-    echo "       exec-once = $bin/$prog --restore"
+    echo "  3. Bind a key, e.g.:"
+    echo "       i3:       bindsym \$mod+w exec --no-startup-id $bin/$prog"
+    echo "                 exec_always --no-startup-id $bin/$prog --restore"
+    echo "       hyprland: bind = SUPER, W, exec, $bin/$prog"
+    echo "                 exec-once = $bin/$prog --restore"
     [ "${ok:-0}" -eq 1 ] || echo "  (some required dependencies are missing, see the checks above)"
 fi

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Run qs-bgselector on X11 (i3 etc.) inside a nested labwc window.
+# The picker sits on top of your current wallpaper (swaybg inside labwc).
+# Picking a wallpaper sets it on the real desktop through BGSEL_SET_CMD from
+# your qs-bgselector config.
+
+HOST_DISPLAY="${HOST_DISPLAY:-$DISPLAY}"
+QS_CUR="$(readlink "$HOME/.cache/current-wallpaper" 2>/dev/null)"
+export HOST_DISPLAY QS_CUR
+
+exec labwc -s 'sh -c "if [ -n \"$QS_CUR\" ]; then swaybg -i \"$QS_CUR\" -m fill >/dev/null 2>&1 & fi; qs-bgselector; labwc --exit"'

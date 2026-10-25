@@ -18,6 +18,7 @@ ShellRoot {
     readonly property string applyScript: env("BGSEL_APPLY", "")
     readonly property string currentPath: env("BGSEL_CURRENT", "")
     readonly property string wallDir: env("BGSEL_DIR", "")
+    readonly property bool showLoader: env("BGSEL_LOADER", "1") !== "0"
 
     FileView {
         id: listFile
@@ -65,12 +66,19 @@ ShellRoot {
             textColor: shell.env("BGSEL_TEXT", "#dee4e1")
             textMuted: shell.env("BGSEL_TEXT_MUTED", "#bec9c5")
             fontFamily: shell.env("BGSEL_FONT", "JetBrains Mono")
+            showLoader: shell.showLoader
             emptyText: shell.wallDir !== "" ? "No wallpapers found in " + shell.wallDir : "No wallpapers found"
 
             onPicked: (path) => {
                 picker.busy = true
-                applyProc.command = ["bash", shell.applyScript, path]
-                applyProc.running = true
+                if (shell.showLoader) {
+                    applyProc.command = ["bash", shell.applyScript, path]
+                    applyProc.running = true
+                } else {
+                    // no spinner: apply in the background and fade out right away
+                    Quickshell.execDetached(["bash", shell.applyScript, path])
+                    picker.finishAndQuit()
+                }
             }
             onDismissed: Qt.quit()
         }

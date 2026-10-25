@@ -13,6 +13,8 @@ FocusScope {
     property color textMuted: "#bec9c5"
     property string fontFamily: "JetBrains Mono"
     property bool busy: false
+    // false: no spinner, the picker fades out and the wallpaper is applied in the background
+    property bool showLoader: true
     // Shown instead of "No matches" when the wallpaper directory is empty
     property string emptyText: ""
 
@@ -171,7 +173,7 @@ FocusScope {
     // ---- visuals ---------------------------------------------------------
     Rectangle {
         anchors.fill: parent
-        color: root.busy ? "#40000000" : "#80000000"
+        color: root.busy && root.showLoader ? "#40000000" : "#80000000"
         Behavior on color { ColorAnimation { duration: 250; easing.type: Easing.OutCubic } }
 
         NumberAnimation on opacity { from: 0; to: 1; duration: 160; easing.type: Easing.OutCubic }
@@ -184,7 +186,7 @@ FocusScope {
     Item {
         id: stage
         anchors.fill: parent
-        opacity: root.busy ? 0.0 : 1.0
+        opacity: root.busy && root.showLoader ? 0.0 : 1.0
         Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
 
         Repeater {
@@ -315,7 +317,7 @@ FocusScope {
         anchors.centerIn: parent
         width: 72 * root.u
         height: 72 * root.u
-        visible: root.busy
+        visible: root.busy && root.showLoader
         opacity: visible ? 1 : 0
         Behavior on opacity { NumberAnimation { duration: 250 } }
 
@@ -324,7 +326,7 @@ FocusScope {
 
         SequentialAnimation {
             id: ringAnim
-            running: root.busy
+            running: root.busy && root.showLoader
             loops: Animation.Infinite
 
             NumberAnimation {

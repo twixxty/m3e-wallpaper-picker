@@ -71,10 +71,9 @@ set_swaybg() {
     [ -n "$old" ] && kill $old 2>/dev/null
 }
 
-if [ "$BACKEND" = auto ]; then BACKEND="$(detect_backend)"; fi
-
-if [ -n "${BGSEL_SET_CMD:-}" ] && { [ "$BACKEND" = custom ] || [ "$BACKEND" = auto ] || [ "$BACKEND" = none ]; }; then
-    BACKEND=custom
+# A custom command always beats auto-detection.
+if [ "$BACKEND" = auto ]; then
+    if [ -n "${BGSEL_SET_CMD:-}" ]; then BACKEND=custom; else BACKEND="$(detect_backend)"; fi
 fi
 
 case "$BACKEND" in

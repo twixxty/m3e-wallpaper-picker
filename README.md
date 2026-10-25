@@ -28,7 +28,7 @@ that project's carousel look comes from [ilyamiro's nixos config](https://github
 - matugen or pywal theming, and the picker can match your wallpaper too
 - `--restore` for login and `--random` for when you can't decide
 - `--doctor` tells you what's missing
-
+- now with x11 support (i went through 7 layers of hell to achieve this)
 ---
 
 ## install

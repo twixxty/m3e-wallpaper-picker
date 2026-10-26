@@ -23,12 +23,11 @@ that project's carousel look comes from [ilyamiro's nixos config](https://github
 - a smooth carousel for your wallpapers, local images only
 - type to filter by filename
 - thumbnails are cached, so it opens fast
-- works on both X11 and Wayland
+- works on both X11 and Wayland (i went through 7 layers of hell to achieve this)
 - works with `feh`, `nitrogen`, `xwallpaper`, `hsetroot`, `awww`, `swww`, `hyprpaper`, `swaybg`, or your own command
 - matugen or pywal theming, and the picker can match your wallpaper too
 - `--restore` for login and `--random` for when you can't decide
 - `--doctor` tells you what's missing
-- now with x11 support (i went through 7 layers of hell to achieve this)
 ---
 
 ## install
